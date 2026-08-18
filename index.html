@@ -1,71 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NWSC Pump Asset Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script>
-/* =========================================================
-   NWSC PUMP QR SYSTEM
-   QR contains ALL pump information
-   Mobile + Desktop compatible
-   ========================================================= */
 
-/* QR image service */
-const QR_API = "https://api.qrserver.com/v1/create-qr-code/";
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
 
-/* Scanner */
-let html5QrcodeScanner = null;
-let scannerRunning = false;
-
-
-/* =========================================================
-   PAGE INITIALIZATION
-   ========================================================= */
-
-window.addEventListener("load", function () {
-
-    const today = new Date().toISOString().split("T")[0];
-
-    document.getElementById("entry-date").value = today;
-    document.getElementById("date-received").value = today;
-
-});
-
-
-/* =========================================================
-   TAB CONTROL
-   ========================================================= */
-
-function switchTab(tab) {
-
-    const genTab = document.getElementById("tab-gen");
-    const scanTab = document.getElementById("tab-scan");
-
-    const genSec = document.getElementById("section-generate");
-    const scanSec = document.getElementById("section-scan");
-
-    if (tab === "generate") {
-
-        genTab.classList.add("active");
-        scanTab.classList.remove("active");
-
-        genSec.style.display = "block";
-        scanSec.style.display = "none";
-
-        stopScanner();
-
-    } else {
-
-        genTab.classList.remove("active");
-        scanTab.classList.add("active");
-
-        genSec.style.display = "none";
-        scanSec.style.display = "block";
-
-        startScanner();
-    }
+body{
+    font-family:Arial,sans-serif;
+    background:#f3f4f6;
+    padding:12px;
+    color:#1f2937
 }
 
+.container{
+    max-width:760px;
+    margin:auto;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 4px 15px rgba(0,0,0,.12)
+}
 
-/* =========================================================
+h1{
+    text-align:center;
+    color:#1d4ed8;
+    font-size:22px;
+    margin-bottom:20px;
+    border-bottom:2px solid #e5e7eb;
+    padding-bottom:15px
+}
+
+.tabs{
+    display:flex;
+    margin-bottom:20px;
+    border-bottom:2px solid #e5e7eb
+}
+
+.tab{
+    flex:1;
+    padding:14px;
+    border:0;
+    background:white;
+    font-weight:bold;
+    cursor:pointer;
+    color:#6b7280
+}
+
+.tab.active{
+    color:#1d4ed8;
+    border-bottom:3px solid #1d4ed8
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column
+}
+
+label{
+    font-size:12px;
+    font-weight:bold;
+    margin-bottom:5px;
+    color:#374151
+}
+
+input,select{
+    width:100%;
+    padding:11px;
+    border:1px solid #d1d5db;
+    border-radius:6px;
+    font-size:14px;
+    background:white
+}
+
+input:focus,select:focus{
+    outline:none;
+    border-color:#2563eb
+}
+
+.full{
+    grid-column:span 2
+}
+
+button.main{
+    width:100%;
+    margin-top:20px;
+    padding:15px;
+    background:#1d4ed8;
+    color:white;
+    border:0;
+    border-radius:7px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px
+}
+
+button.main:hover{
+    background:#1e40af
+}
+
+#qr-section{
+    display:none;
+    margin-top:20px;
+    padding:20px;
+    border:2px dashed #cbd5e1;
+    border-radius:10px;
+    text-align:center
+}
+
+#qr-code{
+    display:flex;
+    justify-content:center;
+    margin:15px 0
+}
+
+#qr-code img{
+    width:280px;
+    height:280px
+}
+
+.record-title{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:10px
+}
+
+.status{
+    margin-top:10px;
+    font-weight:bold
+}
+
+.secondary{
+    background:#6b7280!important
+}
+
+#scan-section{
+    display:none
+}
+
+#reader{
+    width:100%;
+    max-width:500px;
+    margin:auto
+}
+
+.result{
+    display:none;
+    margin-top:20px;
+    background:#eff6ff;
+    padding:18px;
+    border-radius:8px;
+    border:1px solid #bfdbfe
+}
+
+.result h2{
+    color:#1e3a8a;
+    margin-bottom:15px;
+    font-size:18px
+}
+
+.row{
+    display:flex;
+    justify-content:space-between;
+    gap:15px;
+    padding:9px 0;
+    border-bottom:1px solid #dbeafe
+}
+
+.row strong{
+    color:#6b7280;
+    font-size:12px
+}
+
+.row span{
+    text-align:right;
+    font-weight:bold
+}
+
+@media(max-width:600px){
+    .grid{
+        grid-template-columns:1fr
+    }
+
+    .full{
+        grid-column:span 1
+    }
+
+    .row{
+        flex-direction:column;
+        gap:3px
+    }
+
+    .row span{
+        text-align:left
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>NWSC PUMP ASSET MANAGEMENT</h1>
+
+<div class="tabs">
+    <button id="registerTab" class="tab active" onclick="showRegister()">
+        REGISTER PUMP
+    </button>
+
+    <button id="scanTab" class="tab" onclick="showScanner()">
+        SCAN PUMP QR
+    </button>
+</div>
+
+
+<!-- REGISTER -->
+
+<div id="registerSection">
+
+<div class="grid">
+
+<div class="form-group">
+<label>Record ID</label>
+<input id="recordId" readonly>
+</div>
+
+<div class="form-group">
+<label>Entry Date</label>
+<input type="date" id="entryDate">
+</div>
+
+<div class="form-group">
+<label>NWSC Asset Number</label>
+<input id="assetNumber">
+</div>
+
+<div class="form-group">
+<label>Serial Number</label>
+<input id="serialNumber">
+</div>
+
+<div class="form-group">
+<label>Pump Manufacturer</label>
+<input id="pumpManufacturer">
+</div>
+
+<div class="form-group">
+<label>Pump Model</label>
+<input id="pumpModel">
+</div>
+
+<div class="form-group">
+<label>Pump Type</label>
+<select id="pumpType">
+<option>Centrifugal</option>
+<option>Submersible</option>
+<option>Booster</option>
+<option>Other</option>
+</select>
+</div>
+
+<div class="form-group">
+<label>Pump Capacity (m³/h)</label>
+<input type="number" id="pumpCapacity">
+</div>
+
+<div class="form-group">
+<label>Motor Rating (kW)</label>
+<input type="number" id="motorRating">
+</div>
+
+<div class="form-group">
+<label>Motor Serial Number</label>
+<input id="motorSerialNumber">
+</div>
+
+<div class="form-group">
+<label>Station</label>
+<input id="station">
+</div>
+
+<div class="form-group">
+<label>Location / Installation Point</label>
+<input id="location">
+</div>
+
+<div class="form-group">
+<label>Delivered By</label>
+<input id="deliveredBy">
+</div>
+
+<div class="form-group">
+<label>Date Received</label>
+<input type="date" id="dateReceived">
+</div>
+
+<div class="form-group">
+<label>Fault Reported</label>
+<input id="faultReported">
+</div>
+
+<div class="form-group">
+<label>Condition</label>
+<select id="condition">
+<option>In Service</option>
+<option>Out of Service</option>
+<option>Under Maintenance</option>
+<option>Under Repair</option>
+<option>New</option>
+</select>
+</div>
+
+</div>
+
+<button class="main" onclick="generatePumpQR()">
+GENERATE PUMP QR CODE
+</button>
+
+
+<div id="qr-section">
+
+<div class="record-title">
+Record ID: <span id="qr-record-id"></span>
+</div>
+
+<div id="qr-code"></div>
+
+<div class="status">
+QR contains ALL pump information
+</div>
+
+<button class="main secondary" onclick="window.print()">
+PRINT QR CODE
+</button>
+
+<button class="main secondary" onclick="resetForm()">
+REGISTER ANOTHER PUMP
+</button>
+
+</div>
+
+</div>
+
+
+<!-- SCANNER -->
+
+<div id="scan-section">
+
+<div id="reader"></div>
+
+<div id="scan-result" class="result">
+
+<h2>PUMP SPECIFICATIONS</h2>
+
+<div id="pump-details"></div>
+
+<button class="main" onclick="scanAgain()">
+SCAN ANOTHER PUMP
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+let scanner = null;
+let scannerRunning = false;
+
+const GITHUB_OWNER = "Luts-Inv";
+const GITHUB_REPO = "NWSC-Workshop-Tracking-System";
+const GITHUB_BRANCH = "main";
+const PUMPS_FILE = "pumps.json";
+
+const GITHUB_API =
+    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PUMPS_FILE}`;
+
+const GITHUB_RAW =
+    `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${PUMPS_FILE}`;
+
+
+/* -------------------------
    UNIQUE RECORD ID
-   ========================================================= */
+------------------------- */
 
 function generateRecordId() {
 
@@ -76,59 +407,64 @@ function generateRecordId() {
         .replace(/[^A-Z0-9]/g, "")
         .substring(0, 5) || "GEN";
 
-    const timePart = Date.now().toString();
+    const timestamp = Date.now();
 
-    return "NWSC-" + station + "-P-" + timePart;
+    return `NWSC-${station}-P-${timestamp}`;
 }
 
 
-/* =========================================================
-   COLLECT ALL FORM DATA
-   ========================================================= */
+/* -------------------------
+   DEFAULT DATES
+------------------------- */
 
-function collectFormData() {
+window.onload=function(){
 
-    let recordId =
-        document.getElementById("record-id").value.trim();
+    const today =
+        new Date().toISOString().split("T")[0];
 
-    if (!recordId) {
+    document.getElementById("entryDate").value=today;
+    document.getElementById("dateReceived").value=today;
 
-        recordId = generateRecordId();
+};
 
-        document.getElementById("record-id").value =
-            recordId;
-    }
+
+/* -------------------------
+   COLLECT ALL DATA
+------------------------- */
+function collectPumpData() {
+
+    const recordId =
+        document.getElementById("recordId").value.trim();
 
     return {
-
         recordId: recordId,
 
         entryDate:
-            document.getElementById("entry-date").value,
+            document.getElementById("entryDate").value,
 
         assetNumber:
-            document.getElementById("asset-num").value.trim(),
+            document.getElementById("assetNumber").value.trim(),
 
         serialNumber:
-            document.getElementById("serial-num").value.trim(),
+            document.getElementById("serialNumber").value.trim(),
 
         pumpManufacturer:
-            document.getElementById("pump-man").value.trim(),
+            document.getElementById("pumpManufacturer").value.trim(),
 
         pumpModel:
-            document.getElementById("pump-model").value.trim(),
+            document.getElementById("pumpModel").value.trim(),
 
         pumpType:
-            document.getElementById("pump-type").value,
+            document.getElementById("pumpType").value,
 
         pumpCapacity:
-            document.getElementById("pump-cap").value,
+            document.getElementById("pumpCapacity").value,
 
         motorRating:
-            document.getElementById("motor-rate").value,
+            document.getElementById("motorRating").value,
 
         motorSerialNumber:
-            document.getElementById("motor-serial").value.trim(),
+            document.getElementById("motorSerialNumber").value.trim(),
 
         station:
             document.getElementById("station").value.trim(),
@@ -137,48 +473,43 @@ function collectFormData() {
             document.getElementById("location").value.trim(),
 
         deliveredBy:
-            document.getElementById("delivered-by").value.trim(),
+            document.getElementById("deliveredBy").value.trim(),
 
         dateReceived:
-            document.getElementById("date-received").value,
+            document.getElementById("dateReceived").value,
 
-        workOrder:
-            document.getElementById("work-order").value.trim()
+        faultReported:
+            document.getElementById("faultReported").value.trim(),
+
+        condition:
+            document.getElementById("condition").value
     };
 }
 
 
-/* =========================================================
-   VALIDATE FORM
-   ========================================================= */
+/* -------------------------
+   VALIDATION
+------------------------- */
 
-function validateData(data) {
+function validate(data){
 
-    const required = [
-
-        ["Record ID", data.recordId],
-
-        ["NWSC Asset Number", data.assetNumber],
-
-        ["Serial Number", data.serialNumber],
-
-        ["Pump Manufacturer", data.pumpManufacturer],
-
-        ["Pump Model", data.pumpModel],
-
-        ["Station", data.station]
-
+    const required=[
+        ["NWSC Asset Number",data.assetNumber],
+        ["Serial Number",data.serialNumber],
+        ["Pump Manufacturer",data.pumpManufacturer],
+        ["Pump Model",data.pumpModel],
+        ["Station",data.station]
     ];
 
-    const missing =
+    const missing=
         required
-        .filter(item => !item[1])
-        .map(item => item[0]);
+        .filter(x=>!x[1])
+        .map(x=>x[0]);
 
-    if (missing.length) {
+    if(missing.length){
 
         alert(
-            "Please complete these fields:\n\n" +
+            "Please complete:\n\n"+
             missing.join("\n")
         );
 
@@ -189,664 +520,602 @@ function validateData(data) {
 }
 
 
-/* =========================================================
-   CREATE QR PAYLOAD
-   ========================================================= */
+/* -------------------------
+   CREATE QR
+------------------------- */
 
-function createQrPayload(data) {
+function generatePumpQR() {
 
-    /*
-       We put the COMPLETE pump record inside the QR.
+    // Generate a unique ID
+    const recordId = generateRecordId();
 
-       NWSC_PUMP: identifies this as our pump QR.
-    */
+    document.getElementById("recordId").value = recordId;
 
-    const json = JSON.stringify(data);
+    // Collect all pump information
+    const data = collectPumpData();
 
-    return "NWSC_PUMP:" + json;
-}
-
-
-/* =========================================================
-   GENERATE QR IMAGE
-   ========================================================= */
-
-function showQrCode(data) {
-
-    const container =
-        document.getElementById("qr-output-container");
-
-    const qrBox =
-        document.getElementById("qr-code");
-
-    const title =
-        document.getElementById("qr-title-label");
-
-    const status =
-        document.getElementById("cloud-status");
-
-
-    /* Clear previous QR */
-
-    qrBox.innerHTML = "";
-
-
-    /* Create complete QR payload */
-
-    const payload =
-        createQrPayload(data);
-
-
-    /*
-       Encode entire payload safely.
-       encodeURIComponent is important for mobile browsers.
-    */
-
-    const encoded =
-        encodeURIComponent(payload);
-
-
-    /*
-       Use QR Server to create a normal IMAGE.
-
-       This is much more reliable on mobile
-       than depending on canvas rendering.
-    */
-
-    const qrUrl =
-        QR_API +
-        "?size=400x400" +
-        "&margin=10" +
-        "&data=" +
-        encoded;
-
-
-    const image =
-        document.createElement("img");
-
-    image.id = "generated-qr";
-
-    image.alt =
-        "NWSC Pump QR Code";
-
-    image.width = 400;
-
-    image.height = 400;
-
-    image.style.width = "min(400px, 80vw)";
-
-    image.style.height = "auto";
-
-    image.style.display = "block";
-
-    image.style.background = "white";
-
-    image.style.padding = "8px";
-
-
-    image.onload = function () {
-
-        status.textContent =
-            "✓ QR code generated successfully.";
-
-        status.style.color =
-            "#15803d";
-    };
-
-
-    image.onerror = function () {
-
-        status.textContent =
-            "QR image could not be loaded. Check your internet connection.";
-
-        status.style.color =
-            "#b91c1c";
-    };
-
-
-    image.src = qrUrl;
-
-
-    qrBox.appendChild(image);
-
-
-    title.textContent =
-        "Asset QR: " + data.recordId;
-
-
-    container.style.display = "flex";
-}
-
-
-/* =========================================================
-   GENERATE BUTTON
-   ========================================================= */
-
-async function sendToGoogleSheets() {
-
-    const button =
-        document.getElementById("submit-btn");
-
-    const status =
-        document.getElementById("cloud-status");
-
-
-    const data =
-        collectFormData();
-
-
-    if (!validateData(data)) {
-
+    // Validate
+    if (!validate(data)) {
         return;
     }
 
+    // Make sure QR library loaded
+    if (typeof QRCode === "undefined") {
+        alert(
+            "QR generator library did not load.\n\n" +
+            "Please check your internet connection and reload the page."
+        );
+        return;
+    }
 
-    button.disabled = true;
+    // Convert ALL pump information into QR data
+    const jsonData = JSON.stringify(data);
 
-    button.textContent =
-        "GENERATING QR...";
+    const payload =
+        "NWSC_PUMP:" +
+        btoa(
+            unescape(
+                encodeURIComponent(jsonData)
+            )
+        );
 
-    status.textContent =
-        "Preparing pump information...";
-
-    status.style.color =
-        "#1d4ed8";
-
+    // Clear previous QR
+    const qr = document.getElementById("qr-code");
+    qr.innerHTML = "";
 
     try {
 
-        /*
-           Generate QR containing ALL information.
-        */
+        new QRCode(qr, {
+            text: payload,
+            width: 280,
+            height: 280,
+            correctLevel: QRCode.CorrectLevel.H
+        });
 
-        showQrCode(data);
+        // Display record ID
+        document.getElementById("qr-record-id").textContent =
+            recordId;
 
+        // Show QR section
+        document.getElementById("qr-section").style.display =
+            "block";
 
-        status.textContent =
-            "✓ Pump QR generated successfully.";
-
-        status.style.color =
-            "#15803d";
-
+        // Scroll to QR
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: "smooth"
+        });
 
     } catch (error) {
 
-        console.error(error);
+        console.error("QR ERROR:", error);
 
-        status.textContent =
-            "QR generation failed: " +
-            error.message;
-
-        status.style.color =
-            "#b91c1c";
-
-    } finally {
-
-        button.disabled = false;
-
-        button.textContent =
-            "Generate Pump QR Code";
+        alert(
+            "QR generation failed:\n\n" +
+            error.message
+        );
     }
 }
 
+function showQrCode(recordId) {
+    const box = document.getElementById('qr-output-container');
+    const qr = document.getElementById('qr-code');
+    const title = document.getElementById('qr-title-label');
+    const status = document.getElementById('cloud-status');
 
-/* =========================================================
-   START QR SCANNER
-   ========================================================= */
+    qr.innerHTML = '';
 
-async function startScanner() {
-
-    const resultContainer =
-        document.getElementById(
-            "scan-result-container"
-        );
-
-    resultContainer.style.display =
-        "none";
-
-
-    if (!window.Html5Qrcode) {
-
-        showScanError(
-            "QR scanner library could not be loaded."
-        );
-
+    // Check whether QRCode.js loaded
+    if (typeof QRCode === 'undefined') {
+        status.textContent =
+            'QR generator failed to load. Please check your internet connection and reload the page.';
+        status.style.color = '#b91c1c';
+        box.style.display = 'flex';
         return;
     }
-
-
-    if (scannerRunning) {
-
-        return;
-    }
-
-
-    document.getElementById("reader").innerHTML = "";
-
-
-    html5QrcodeScanner =
-        new Html5Qrcode("reader");
-
 
     try {
+        const payload = buildQrPayload(recordId);
 
-        await html5QrcodeScanner.start(
+        new QRCode(qr, {
+            text: payload,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        title.textContent = 'Asset QR: ' + recordId;
+
+        status.textContent = '✓ QR code generated successfully.';
+        status.style.color = '#15803d';
+
+        box.style.display = 'flex';
+
+    } catch (error) {
+        console.error('QR generation error:', error);
+
+        status.textContent =
+            'QR generation failed: ' + error.message;
+
+        status.style.color = '#b91c1c';
+
+        box.style.display = 'flex';
+    }
+}
+/* -------------------------
+   SWITCH TO REGISTER
+------------------------- */
+
+function showRegister(){
+
+    stopScanner();
+
+    document.getElementById(
+        "registerSection"
+    ).style.display="block";
+
+    document.getElementById(
+        "scan-section"
+    ).style.display="none";
+
+    document.getElementById(
+        "registerTab"
+    ).classList.add("active");
+
+    document.getElementById(
+        "scanTab"
+    ).classList.remove("active");
+
+}
+
+
+/* -------------------------
+   SWITCH TO SCANNER
+------------------------- */
+
+function showScanner(){
+
+    document.getElementById(
+        "registerSection"
+    ).style.display="none";
+
+    document.getElementById(
+        "scan-section"
+    ).style.display="block";
+
+    document.getElementById(
+        "registerTab"
+    ).classList.remove("active");
+
+    document.getElementById(
+        "scanTab"
+    ).classList.add("active");
+
+    startScanner();
+
+}
+
+
+/* -------------------------
+   START SCANNER
+------------------------- */
+
+async function startScanner(){
+
+    if(scannerRunning) return;
+
+    document.getElementById(
+        "scan-result"
+    ).style.display="none";
+
+
+    scanner=new Html5Qrcode("reader");
+
+
+    try{
+
+        await scanner.start(
+
+            {facingMode:"environment"},
 
             {
-                facingMode: "environment"
-            },
-
-            {
-                fps: 10,
-
-                qrbox: {
-                    width: 250,
-                    height: 250
+                fps:10,
+                qrbox:{
+                    width:250,
+                    height:250
                 }
             },
 
-            onScanSuccess,
+            qrSuccess,
 
-            () => {}
+            function(){}
+
         );
 
+        scannerRunning=true;
 
-        scannerRunning = true;
+    }catch(error){
 
-
-    } catch (error) {
-
-        console.error(error);
-
-        showScanError(
-            "Unable to start camera. Allow camera access and try again."
+        alert(
+            "Camera could not start. "+
+            "Please allow camera access."
         );
+
     }
+
 }
 
 
-/* =========================================================
+/* -------------------------
    STOP SCANNER
-   ========================================================= */
+------------------------- */
 
-async function stopScanner() {
+async function stopScanner(){
 
-    if (
-        !html5QrcodeScanner ||
-        !scannerRunning
-    ) {
-
+    if(!scanner || !scannerRunning)
         return;
-    }
 
+    try{
 
-    try {
+        await scanner.stop();
 
-        await html5QrcodeScanner.stop();
+        scanner.clear();
 
-        html5QrcodeScanner.clear();
+    }catch(e){}
 
-    } catch (error) {
+    scannerRunning=false;
 
-        console.warn(
-            "Scanner stop:",
-            error
-        );
-    }
-
-
-    scannerRunning = false;
 }
 
 
-/* =========================================================
-   QR SCAN SUCCESS
-   ========================================================= */
+/* -------------------------
+   QR SCANNED
+------------------------- */
 
-async function onScanSuccess(decodedText) {
+async function qrSuccess(decodedText){
 
     await stopScanner();
-
-
-    document.getElementById(
-        "scan-result-container"
-    ).style.display = "block";
-
-
-    document.getElementById(
-        "scan-result-list"
-    ).innerHTML =
-        '<p class="status-msg">' +
-        'Reading pump information...' +
-        '</p>';
 
 
     let data;
 
 
-    try {
+    try{
 
-        data =
-            decodePumpQr(decodedText);
+        if(!decodedText.startsWith("NWSC_PUMP:")){
 
-    } catch (error) {
+            throw new Error(
+                "This is not an NWSC pump QR code."
+            );
 
-        console.error(error);
+        }
 
-        showScanError(
-            "Invalid NWSC pump QR code."
+
+        const encoded=
+            decodedText.substring(10);
+
+
+        data=JSON.parse(
+
+            decodeURIComponent(
+
+                escape(
+                    atob(encoded)
+                )
+
+            )
+
+        );
+
+
+    }catch(error){
+
+        alert(
+            "Invalid pump QR code."
         );
 
         return;
+
     }
 
 
-    if (!data) {
+    displayPump(data);
 
-        showScanError(
-            "No pump information was found in this QR code."
-        );
-
-        return;
-    }
-
-
-    document.getElementById(
-        "scan-record-badge"
-    ).textContent =
-        data.recordId || "UNKNOWN";
-
-
-    displayRecord(data);
 }
 
-
-/* =========================================================
-   DECODE PUMP QR
-   ========================================================= */
-
-function decodePumpQr(decodedText) {
-
-    /*
-       Expected format:
-
-       NWSC_PUMP:{JSON DATA}
-    */
-
-    if (
-        !decodedText.startsWith(
-            "NWSC_PUMP:"
-        )
-    ) {
-
-        throw new Error(
-            "Not an NWSC pump QR."
-        );
-    }
-
-
-    const jsonText =
-        decodedText.substring(
-            "NWSC_PUMP:".length
-        );
-
-
-    return JSON.parse(jsonText);
-}
-
-
-/* =========================================================
-   DISPLAY PUMP DATA
-   ========================================================= */
-
-function displayRecord(record) {
-
-    const fields = [
-
-        [
-            "Record ID",
-            record.recordId
-        ],
-
-        [
-            "Entry Date",
-            record.entryDate
-        ],
-
-        [
-            "NWSC Asset Number",
-            record.assetNumber
-        ],
-
-        [
-            "Serial Number",
-            record.serialNumber
-        ],
-
-        [
-            "Pump Manufacturer",
-            record.pumpManufacturer
-        ],
-
-        [
-            "Pump Model",
-            record.pumpModel
-        ],
-
-        [
-            "Pump Type",
-            record.pumpType
-        ],
-
-        [
-            "Pump Capacity (m³/h)",
-            record.pumpCapacity
-        ],
-
-        [
-            "Motor Rating (kW)",
-            record.motorRating
-        ],
-
-        [
-            "Motor Serial Number",
-            record.motorSerialNumber
-        ],
-
-        [
-            "Station",
-            record.station
-        ],
-
-        [
-            "Location / Installation",
-            record.location
-        ],
-
-        [
-            "Delivered By",
-            record.deliveredBy
-        ],
-
-        [
-            "Date Received",
-            record.dateReceived
-        ],
-
-        [
-            "Work Order",
-            record.workOrder
-        ]
-
-    ];
-
-
-    document.getElementById(
-        "scan-result-list"
-    ).innerHTML =
-
-        fields.map(
-            ([label, value]) => `
-
-                <div class="result-row">
-
-                    <span class="result-label">
-                        ${escapeHtml(label)}
-                    </span>
-
-                    <span class="result-val">
-                        ${escapeHtml(
-                            String(value || "—")
-                        )}
-                    </span>
-
-                </div>
-
-            `
-        ).join("");
-}
-
-
-/* =========================================================
-   SCAN ERROR
-   ========================================================= */
-
-function showScanError(message) {
-
-    document.getElementById(
-        "scan-result-container"
-    ).style.display = "block";
-
-
-    document.getElementById(
-        "scan-result-list"
-    ).innerHTML =
-
-        `<p class="status-msg"
-            style="color:#b91c1c;">
-            ${escapeHtml(message)}
-        </p>`;
-}
-
-
-/* =========================================================
-   RESTART SCANNER
-   ========================================================= */
-
-async function restartScanner() {
-
-    document.getElementById(
-        "scan-result-container"
-    ).style.display = "none";
-
-
-    await startScanner();
-}
-
-
-/* =========================================================
-   CLEAR FORM
-   ========================================================= */
-
-function clearForm() {
-
-    const ids = [
-
-        "record-id",
-
-        "asset-num",
-
-        "serial-num",
-
-        "pump-man",
-
-        "pump-model",
-
-        "pump-cap",
-
-        "motor-rate",
-
-        "motor-serial",
-
-        "station",
-
-        "location",
-
-        "delivered-by",
-
-        "work-order"
-
-    ];
-
-
-    ids.forEach(
-        id =>
-            document.getElementById(id).value = ""
+async function savePumpToGitHub(pumpData) {
+
+    const token = prompt(
+        "Enter your GitHub Personal Access Token:\n\n" +
+        "This is required to save the pump record to GitHub."
     );
 
+    if (!token) {
+        throw new Error("GitHub token was not provided.");
+    }
 
-    const today =
+    // Get current pumps.json
+    const getResponse = await fetch(
+        `${GITHUB_API}?ref=${GITHUB_BRANCH}`,
+        {
+            headers: {
+                "Accept": "application/vnd.github+json",
+                "Authorization": `Bearer ${token}`
+            }
+        }
+    );
+
+    if (!getResponse.ok) {
+        throw new Error(
+            "Unable to access pumps.json. Check your GitHub token."
+        );
+    }
+
+    const fileData = await getResponse.json();
+
+    // Decode GitHub's Base64 content
+    const currentContent = decodeURIComponent(
+        escape(
+            atob(fileData.content.replace(/\n/g, ""))
+        )
+    );
+
+    let pumps = [];
+
+    try {
+        pumps = JSON.parse(currentContent);
+    } catch (error) {
+        throw new Error("pumps.json contains invalid JSON.");
+    }
+
+    if (!Array.isArray(pumps)) {
+        throw new Error("pumps.json must contain an array.");
+    }
+
+    // Prevent duplicate Record IDs
+    const duplicate = pumps.some(
+        pump => pump.recordId === pumpData.recordId
+    );
+
+    if (duplicate) {
+        throw new Error(
+            `Record ID ${pumpData.recordId} already exists.`
+        );
+    }
+
+    // Add new pump
+    pumps.push(pumpData);
+
+    // Convert back to JSON
+    const newContent = btoa(
+        unescape(
+            encodeURIComponent(
+                JSON.stringify(pumps, null, 2)
+            )
+        )
+    );
+
+    // Write back to GitHub
+    const updateResponse = await fetch(GITHUB_API, {
+        method: "PUT",
+
+        headers: {
+            "Accept": "application/vnd.github+json",
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+            message: `Add pump ${pumpData.recordId}`,
+            content: newContent,
+            sha: fileData.sha,
+            branch: GITHUB_BRANCH
+        })
+    });
+
+    if (!updateResponse.ok) {
+
+        const errorData = await updateResponse.json();
+
+        throw new Error(
+            errorData.message ||
+            "GitHub failed to save the pump record."
+        );
+    }
+
+    return true;
+}
+
+/* -------------------------
+   DISPLAY PUMP
+------------------------- */
+
+function displayPump(data){
+
+    const fields=[
+
+        ["Record ID",data.recordId],
+
+        ["Entry Date",data.entryDate],
+
+        ["NWSC Asset Number",data.assetNumber],
+
+        ["Serial Number",data.serialNumber],
+
+        ["Pump Manufacturer",data.pumpManufacturer],
+
+        ["Pump Model",data.pumpModel],
+
+        ["Pump Type",data.pumpType],
+
+        ["Pump Capacity (m³/h)",data.pumpCapacity],
+
+        ["Motor Rating (kW)",data.motorRating],
+
+        ["Motor Serial Number",data.motorSerialNumber],
+
+        ["Station",data.station],
+
+        ["Location / Installation Point",data.location],
+
+        ["Delivered By",data.deliveredBy],
+
+        ["Date Received",data.dateReceived],
+
+        ["Fault Reported",data.faultReported],
+
+        ["Condition",data.condition]
+
+    ];
+
+
+    document.getElementById(
+        "pump-details"
+    ).innerHTML=
+
+        fields.map(function(field){
+
+            return `
+
+            <div class="row">
+
+                <strong>
+                    ${escapeHTML(field[0])}
+                </strong>
+
+                <span>
+                    ${escapeHTML(
+                        field[1] || "—"
+                    )}
+                </span>
+
+            </div>
+
+            `;
+
+        }).join("");
+
+
+    document.getElementById(
+        "scan-result"
+    ).style.display="block";
+
+
+    window.scrollTo({
+        top:document.body.scrollHeight,
+        behavior:"smooth"
+    });
+
+}
+
+
+/* -------------------------
+   SCAN AGAIN
+------------------------- */
+
+async function scanAgain(){
+
+    document.getElementById(
+        "scan-result"
+    ).style.display="none";
+
+    await startScanner();
+
+}
+
+
+/* -------------------------
+   RESET FORM
+------------------------- */
+
+function resetForm(){
+
+    const ids=[
+
+        "recordId",
+        "assetNumber",
+        "serialNumber",
+        "pumpManufacturer",
+        "pumpModel",
+        "pumpCapacity",
+        "motorRating",
+        "motorSerialNumber",
+        "station",
+        "location",
+        "deliveredBy",
+        "faultReported"
+
+    ];
+
+
+    ids.forEach(function(id){
+
+        document.getElementById(id).value="";
+
+    });
+
+
+    const today=
         new Date()
         .toISOString()
         .split("T")[0];
 
 
     document.getElementById(
-        "entry-date"
-    ).value = today;
+        "entryDate"
+    ).value=today;
+
+    document.getElementById(
+        "dateReceived"
+    ).value=today;
 
 
     document.getElementById(
-        "date-received"
-    ).value = today;
+        "pumpType"
+    ).value="Centrifugal";
 
 
     document.getElementById(
-        "pump-type"
-    ).value = "Centrifugal";
+        "condition"
+    ).value="In Service";
 
 
     document.getElementById(
         "qr-code"
-    ).innerHTML = "";
+    ).innerHTML="";
 
 
     document.getElementById(
-        "qr-output-container"
-    ).style.display = "none";
+        "qr-section"
+    ).style.display="none";
 
 
-    document.getElementById(
-        "cloud-status"
-    ).textContent = "";
+    window.scrollTo({
+        top:0,
+        behavior:"smooth"
+    });
+
 }
 
 
-/* =========================================================
-   SECURITY / HTML ESCAPING
-   ========================================================= */
+/* -------------------------
+   SECURITY
+------------------------- */
 
-function escapeHtml(value) {
+function escapeHTML(value){
 
-    return String(value).replace(
-        /[&<>'"]/g,
+    return String(value)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
 
-        function (char) {
-
-            return {
-
-                "&": "&amp;",
-
-                "<": "&lt;",
-
-                ">": "&gt;",
-
-                "'": "&#39;",
-
-                '"': "&quot;"
-
-            }[char];
-        }
-    );
 }
+
 </script>
+
+</body>
+</html>
