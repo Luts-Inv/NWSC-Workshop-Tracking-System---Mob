@@ -1,0 +1,21 @@
+[
+   {
+    "action": "save",
+    "recordId": "NWSC-LUGOG-P-1755438214567",
+    "entryDate": "2026-08-17",
+    "assetNumber": "1123",
+    "serialNumber": "sn2672",
+    "pumpManufacturer": "Grundfos",
+    "pumpModel": "563",
+    "pumpType": "Centrifugal",
+    "pumpCapacity": "23",
+    "motorRating": "23",
+    "motorSerialNumber": "1254",
+    "station": "Lugogo",
+    "location": "Booster",
+    "deliveredBy": "Amidi",
+    "dateReceived": "2026-07-31",
+    "faultReported": "bearing",
+    "condition": "Out of Service"
+  }
+]
