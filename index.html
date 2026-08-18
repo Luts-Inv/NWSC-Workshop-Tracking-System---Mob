@@ -774,59 +774,58 @@ async function stopScanner(){
    QR SCANNED
 ------------------------- */
 
-async function qrSuccess(decodedText){
+async function onScanSuccess(decodedText) {
 
+    // Stop scanner after successful scan
     await stopScanner();
 
+    document.getElementById("scan-result-container").style.display = "block";
 
-    let data;
+    document.getElementById("scan-result-list").innerHTML =
+        '<p class="status-msg">Reading pump information...</p>';
 
+    try {
 
-    try{
-
-        if(!decodedText.startsWith("NWSC_PUMP:")){
-
-            throw new Error(
-                "This is not an NWSC pump QR code."
-            );
-
+        // Check that this is our NWSC pump QR
+        if (!decodedText.startsWith("NWSC_PUMP:")) {
+            throw new Error("This is not a valid NWSC Pump QR code.");
         }
 
+        // Remove NWSC_PUMP:
+        const encodedData = decodedText.substring(10);
 
-        const encoded=
-            decodedText.substring(10);
-
-
-        data=JSON.parse(
-
-            decodeURIComponent(
-
-                escape(
-                    atob(encoded)
-                )
-
+        // Decode Base64 → JSON
+        const jsonText = decodeURIComponent(
+            escape(
+                atob(encodedData)
             )
-
         );
 
+        // Convert JSON text into object
+        const record = JSON.parse(jsonText);
 
-    }catch(error){
+        // Make sure Record ID exists
+        if (!record.recordId) {
+            throw new Error("QR code does not contain a Record ID.");
+        }
 
-        alert(
-            "Invalid pump QR code."
+        // Show Record ID
+        document.getElementById("scan-record-badge").textContent =
+            record.recordId;
+
+        // Display ALL pump information
+        displayRecord(record);
+
+    } catch (error) {
+
+        console.error("SCAN ERROR:", error);
+
+        showScanError(
+            "Could not read pump information: " +
+            error.message
         );
-
-        return;
-
     }
-
-
-    displayPump(data);
-
 }
-
-async function savePumpToGitHub(pumpData) {
-
     const token = prompt(
         "Enter your GitHub Personal Access Token:\n\n" +
         "This is required to save the pump record to GitHub."
@@ -932,82 +931,64 @@ async function savePumpToGitHub(pumpData) {
    DISPLAY PUMP
 ------------------------- */
 
-function displayPump(data){
 
-    const fields=[
+function displayPump(data) {
 
-        ["Record ID",data.recordId],
+    const fields = [
 
-        ["Entry Date",data.entryDate],
+        ["Record ID", record.recordId],
 
-        ["NWSC Asset Number",data.assetNumber],
+        ["Entry Date", record.entryDate],
 
-        ["Serial Number",data.serialNumber],
+        ["NWSC Asset Number", record.assetNumber],
 
-        ["Pump Manufacturer",data.pumpManufacturer],
+        ["Serial Number", record.serialNumber],
 
-        ["Pump Model",data.pumpModel],
+        ["Pump Manufacturer", record.pumpManufacturer],
 
-        ["Pump Type",data.pumpType],
+        ["Pump Model", record.pumpModel],
 
-        ["Pump Capacity (m³/h)",data.pumpCapacity],
+        ["Pump Type", record.pumpType],
 
-        ["Motor Rating (kW)",data.motorRating],
+        ["Pump Capacity (m³/h)", record.pumpCapacity],
 
-        ["Motor Serial Number",data.motorSerialNumber],
+        ["Motor Rating (kW)", record.motorRating],
 
-        ["Station",data.station],
+        ["Motor Serial Number", record.motorSerialNumber],
 
-        ["Location / Installation Point",data.location],
+        ["Station", record.station],
 
-        ["Delivered By",data.deliveredBy],
+        ["Location / Installation Point", record.location],
 
-        ["Date Received",data.dateReceived],
+        ["Delivered By", record.deliveredBy],
 
-        ["Fault Reported",data.faultReported],
+        ["Date Received", record.dateReceived],
 
-        ["Condition",data.condition]
+        ["Fault Reported", record.faultReported],
+
+        ["Condition", record.condition]
 
     ];
 
+    document.getElementById("scan-result-list").innerHTML =
 
-    document.getElementById(
-        "pump-details"
-    ).innerHTML=
+        fields.map(([label, value]) => `
 
-        fields.map(function(field){
+            <div class="result-row">
 
-            return `
+                <span class="result-label">
+                    ${escapeHtml(label)}
+                </span>
 
-            <div class="row">
-
-                <strong>
-                    ${escapeHTML(field[0])}
-                </strong>
-
-                <span>
-                    ${escapeHTML(
-                        field[1] || "—"
+                <span class="result-val">
+                    ${escapeHtml(
+                        String(value || "—")
                     )}
                 </span>
 
             </div>
 
-            `;
-
-        }).join("");
-
-
-    document.getElementById(
-        "scan-result"
-    ).style.display="block";
-
-
-    window.scrollTo({
-        top:document.body.scrollHeight,
-        behavior:"smooth"
-    });
-
+        `).join("");
 }
 
 
