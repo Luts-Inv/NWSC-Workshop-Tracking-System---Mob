@@ -433,35 +433,24 @@ window.onload=function(){
 ------------------------- */
 function collectPumpData() {
 
-    const recordId =
-        document.getElementById("recordId").value.trim();
-
     return {
-        recordId: recordId,
+        recordId: document.getElementById("recordId").value.trim(),
 
-        entryDate:
-            document.getElementById("entryDate").value,
+        entryDate: document.getElementById("entryDate").value,
 
-        assetNumber:
-            document.getElementById("assetNumber").value.trim(),
+        assetNumber: document.getElementById("assetNumber").value.trim(),
 
-        serialNumber:
-            document.getElementById("serialNumber").value.trim(),
+        serialNumber: document.getElementById("serialNumber").value.trim(),
 
-        pumpManufacturer:
-            document.getElementById("pumpManufacturer").value.trim(),
+        pumpManufacturer: document.getElementById("pumpManufacturer").value.trim(),
 
-        pumpModel:
-            document.getElementById("pumpModel").value.trim(),
+        pumpModel: document.getElementById("pumpModel").value.trim(),
 
-        pumpType:
-            document.getElementById("pumpType").value,
+        pumpType: document.getElementById("pumpType").value,
 
-        pumpCapacity:
-            document.getElementById("pumpCapacity").value,
+        pumpCapacity: document.getElementById("pumpCapacity").value,
 
-        motorRating:
-            document.getElementById("motorRating").value,
+        motorRating: document.getElementById("motorRating").value,
 
         motorSerialNumber:
             document.getElementById("motorSerialNumber").value.trim(),
@@ -485,7 +474,6 @@ function collectPumpData() {
             document.getElementById("condition").value
     };
 }
-
 
 /* -------------------------
    VALIDATION
